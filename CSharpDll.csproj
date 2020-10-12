@@ -9,7 +9,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>MusicBeePlugin</RootNamespace>
-    <AssemblyName>mb_DoubanMusicArtwork</AssemblyName>
+    <AssemblyName>mb_163MusicArtwork</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <FileUpgradeFlags>

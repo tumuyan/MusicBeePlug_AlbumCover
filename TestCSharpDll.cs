@@ -22,9 +22,9 @@ namespace MusicBeePlugin
             mbApiInterface = new MusicBeeApiInterface();
             mbApiInterface.Initialise(apiInterfacePtr);
             about.PluginInfoVersion = PluginInfoVersion;
-            about.Name = "Douban Music Artwork";
-            about.Description = "Get album cover from douban music.  " +
-                "\n从豆瓣音乐获取专辑封面，使用了豆瓣音乐Api V2";
+            about.Name = "163 Music Artwork";
+            about.Description = "Get album cover from music.163.com.  " +
+                "\n从网易云音乐获取专辑封面";
             about.Author = "Tumuyan";
             about.TargetApplication = "";   //  the name of a Plugin Storage device or panel header for a dockable panel
             about.Type = PluginType.ArtworkRetrieval;
@@ -108,7 +108,7 @@ namespace MusicBeePlugin
         {
             return new string[]
                          {
-                            "Douban"
+                            "网易云音乐"
                          };
         }
 
@@ -133,7 +133,7 @@ namespace MusicBeePlugin
                     Artist = s1;
             }
 
-            return getDoubanCover(Artist, album);
+            return get163Cover(Artist, album);
 
 
             /*          MessageBox.Show(
@@ -177,6 +177,76 @@ namespace MusicBeePlugin
         private string prepareString(string s) {
             Regex rgx = new Regex("[\\s\\]\\[\\(\\)`~!@#$%^&\\*()+=|{}':;',\\.<>/\\?~！@#￥%……&*——+|{}【】‘；：”“’。，、？]");
             return rgx.Replace(s.ToLower(), "");
+        }
+
+        private string get163Cover(String Artist, String Album)
+        {
+            if (Album.Replace(" ", "").Length < 1)
+                return null;
+
+            // 从API取回数据
+
+            string SearchUrl = String.Format("http://music.163.com/api/search/pc?offset=0&limit=30&type=10&s={0} {1}", Album,Artist).Replace("&", "%26");
+            var request = (HttpWebRequest)WebRequest.Create(SearchUrl);
+            var response = (HttpWebResponse)request.GetResponse();
+            var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
+
+            JObject SearchResult = JObject.Parse(SearchString);//解析搜索结果
+            JArray SongList = (JArray)SearchResult["result"]["albums"];//搜索结果曲目列表
+
+            if (SongList.Count < 1)
+            {
+                SearchUrl = String.Format("http://music.163.com/api/search/pc?offset=0&limit=30&type=10&s={0}", Album).Replace("&", "%26");
+                request = (HttpWebRequest)WebRequest.Create(SearchUrl);
+                response = (HttpWebResponse)request.GetResponse();
+                SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                SearchResult = JObject.Parse(SearchString);//解析搜索结果
+                SongList = (JArray)SearchResult["musics"];//搜索结果曲目列表
+            }
+
+            if (SongList.Count < 1)
+                return null;
+
+            List<int> list_match_album = new List<int>();
+            List<int> list_match_artist = new List<int>();
+            List<int> list_match_title = new List<int>();
+            List<string> list_image = new List<string>();
+
+            string album = prepareString(Album);
+
+            for (int i = 0; i < SongList.Count; i++)
+            {
+                //result.albums.[1].picUrl
+                //https://img1.doubanio.com/view/subject/s/public/s6498438.jpg
+
+                String s = SongList[i]["picUrl"].ToString().ToLower();
+                if (s.Replace(" ", "").Length < 10)
+                    continue;
+
+                list_image.Add(s);
+
+                // result.albums.[1].name
+                String title = prepareString((SongList[i]["name"] ?? "").ToString());
+                if (title.Contains(album) || album.Contains(title))
+                    list_match_album.Add(i);
+
+                //result.albums.[2].songs (虽然有这个节点，但是大量专辑没有内容）
+                if ((SongList[i]["songs"] ?? "").ToString().ToLower().Contains(album))
+                    list_match_title.Add(i);
+
+                //musics.[1].attrs.singer
+                if (Artist.Length > 0)
+                {
+                    // 如果有多个艺术家（虽然这不规范），只匹配第一个。而检索结果对应了专辑艺术家、参与艺术家、发行方
+                    if ((SongList[i]["artists"]?? "").ToString().ToLower().Contains(Artist.ToLower())
+                        || (SongList[i]["artist"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
+                        || (SongList[i]["company"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
+                        )
+                        list_match_artist.Add(i);
+                }
+            }
+
+            return selectCover(list_match_album, list_match_artist, list_match_title, list_image);
         }
 
 
