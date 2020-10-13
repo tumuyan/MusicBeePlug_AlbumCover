@@ -12,8 +12,15 @@ using System.Text.RegularExpressions;
 
 namespace MusicBeePlugin
 {
+
     public partial class Plugin
     {
+
+#if DEBUG
+        string mode =" Debug";
+#else
+        string mode = "";
+# endif
         private MusicBeeApiInterface mbApiInterface;
         private PluginInfo about = new PluginInfo();
 
@@ -22,7 +29,7 @@ namespace MusicBeePlugin
             mbApiInterface = new MusicBeeApiInterface();
             mbApiInterface.Initialise(apiInterfacePtr);
             about.PluginInfoVersion = PluginInfoVersion;
-            about.Name = "Douban Music Artwork";
+            about.Name = "Douban Music Artwork" + mode;
             about.Description = "Get album cover from douban music.  " +
                 "\n从豆瓣音乐获取专辑封面，使用了豆瓣音乐Api V2";
             about.Author = "Tumuyan";
@@ -108,7 +115,7 @@ namespace MusicBeePlugin
         {
             return new string[]
                          {
-                            "Douban"
+                            "Douban"+mode
                          };
         }
 
@@ -174,17 +181,20 @@ namespace MusicBeePlugin
         }
 
         // 专辑名需要预处理，降低由于标点符号差异造成的影响
-        private string prepareString(string s) {
-            Regex rgx = new Regex("[\\s\\]\\[\\(\\)`~!@#$%^&\\*()+=|{}':;',\\.<>/\\?~！@#￥%……&*——+|{}【】‘；：”“’。，、？]");
+        private string prepareString(string s)
+        {
+            Regex rgx = new Regex("[\\s\\]\\[\\(\\)`~!@#$%^&\\*()+=|{}':;',\\.<>/\\?~～（）「」［］！@#￥%……&*——+|{}【】‘；：”“’。，、？]");
             return rgx.Replace(s.ToLower(), "");
         }
 
 
         private string getDoubanCover(String Artist, String Album)
         {
+            if (Album.Replace(" ", "").Length < 1)
+                return null;
             // 从API取回数据
 
-            string SearchUrl = String.Format("https://api.douban.com/v2/music/search?q={0} {1}", Artist, Album).Replace("&", "%26");
+            string SearchUrl = String.Format("https://api.douban.com/v2/music/search?q={0} {1}", Album, Artist).Replace("&", "%26");
 
             var request = (HttpWebRequest)WebRequest.Create(SearchUrl);
             var response = (HttpWebResponse)request.GetResponse();
@@ -193,8 +203,9 @@ namespace MusicBeePlugin
             JObject SearchResult = JObject.Parse(SearchString);//解析搜索结果
             JArray SongList = (JArray)SearchResult["musics"];//搜索结果曲目列表
 
-            if (SongList.Count < 1) {
-                 SearchUrl = String.Format("https://api.douban.com/v2/music/search?q={0}", Album).Replace("&", "%26");
+            if (SongList.Count < 1)
+            {
+                SearchUrl = String.Format("https://api.douban.com/v2/music/search?q={0}", Album).Replace("&", "%26");
                 request = (HttpWebRequest)WebRequest.Create(SearchUrl);
                 response = (HttpWebResponse)request.GetResponse();
                 SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
@@ -224,28 +235,28 @@ namespace MusicBeePlugin
                 list_image.Add(s);
 
                 // 豆瓣音乐API返回的数据中，专辑名称命名为title
-                String title =prepareString((SongList[i]["title"]??"").ToString());
+                String title = prepareString((SongList[i]["title"] ?? "").ToString());
                 if (title.Contains(album) || album.Contains(title))
                     list_match_album.Add(i);
 
                 //musics.[1].attrs.tracks
-                if ((SongList[i]["attrs"]["tracks"]??"").ToString().ToLower().Contains(album))
+                if ((SongList[i]["attrs"]["tracks"] ?? "").ToString().ToLower().Contains(album))
                     list_match_title.Add(i);
 
                 //musics.[1].attrs.singer
                 if (Artist.Length > 0)
                 {
                     // 如果有多个艺术家（虽然这不规范），只匹配第一个
-                    if ((SongList[i]["attrs"]["singer"]??"").ToString().ToLower().Contains(Artist.ToLower())
-                        || (SongList[i]["attrs"]["publisher"]??"").ToString().ToLower().Contains(Artist.ToLower())
-                        || (SongList[i]["author"]??"").ToString().ToLower().Contains(Artist.ToLower())
+                    if ((SongList[i]["attrs"]["singer"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
+                        || (SongList[i]["attrs"]["publisher"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
+                        || (SongList[i]["author"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
                         )
                         list_match_artist.Add(i);
                 }
             }
 
             return selectCover(list_match_album, list_match_artist, list_match_title, list_image);
- 
+
         }
 
 
