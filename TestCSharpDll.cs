@@ -17,7 +17,7 @@ namespace MusicBeePlugin
     {
 
 #if DEBUG
-        string mode =" Debug";
+        string mode = " Debug";
 #else
         string mode = "";
 # endif
@@ -29,9 +29,9 @@ namespace MusicBeePlugin
             mbApiInterface = new MusicBeeApiInterface();
             mbApiInterface.Initialise(apiInterfacePtr);
             about.PluginInfoVersion = PluginInfoVersion;
-            about.Name = "Douban Music Artwork" + mode;
-            about.Description = "Get album cover from douban music.  " +
-                "\n从豆瓣音乐获取专辑封面，使用了豆瓣音乐Api V2";
+            about.Name = "163 Music Artwork" + mode;
+            about.Description = "Get album cover from music.163.com  " +
+                "\n从网易云音乐获取专辑封面";
             about.Author = "Tumuyan";
             about.TargetApplication = "";   //  the name of a Plugin Storage device or panel header for a dockable panel
             about.Type = PluginType.ArtworkRetrieval;
@@ -183,7 +183,7 @@ namespace MusicBeePlugin
         // 专辑名需要预处理，降低由于标点符号差异造成的影响
         private string prepareString(string s)
         {
-            Regex rgx = new Regex("[\\s\\]\\[\\(\\)`~!@#$%^&\\*()+=|{}':;',\\.<>/\\?~～（）「」［］！@#￥%……&*——+|{}【】‘；：”“’。，、？]");
+            Regex rgx = new Regex("[\\s\\]\\[\\(\\)`~!@#$%^&\\*()+=|{}':;',\\.<>/\\?~～〜（）「」［］！@#￥%……&*——+|{}【】‘；：”“’。，、？]");
             return rgx.Replace(s.ToLower(), "");
         }
 
@@ -192,27 +192,51 @@ namespace MusicBeePlugin
             if (Album.Replace(" ", "").Length < 1)
                 return null;
 
+            JArray SongList = new JArray();//搜索结果曲目列表
+            Boolean search2nd = true;
+
             // 从API取回数据
 
-            string SearchUrl = String.Format("http://music.163.com/api/search/pc?offset=0&limit=30&type=10&s={0} {1}", Album,Artist).Replace("&", "%26");
+            string SearchUrl = String.Format("http://music.163.com/api/search/pc?offset=0&limit=30&type=10&s={0} {1}", Album.Replace("&", "%26"), Artist.Replace("&", "%26"));
             var request = (HttpWebRequest)WebRequest.Create(SearchUrl);
+            request.Referer = "http://music.163.com/";
+            request.UserAgent = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; Maxthon; .NET CLR 1.1.4322)";
             var response = (HttpWebResponse)request.GetResponse();
             var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
+            JObject SearchResult = (JObject)JObject.Parse(SearchString)["result"];//解析搜索结果
 
-            JObject SearchResult = JObject.Parse(SearchString);//解析搜索结果
-            JArray SongList = (JArray)SearchResult["result"]["albums"];//搜索结果曲目列表
-
-            if (SongList.Count < 1)
+            if (null != SearchResult)
             {
-                SearchUrl = String.Format("http://music.163.com/api/search/pc?offset=0&limit=30&type=10&s={0}", Album).Replace("&", "%26");
-                request = (HttpWebRequest)WebRequest.Create(SearchUrl);
-                response = (HttpWebResponse)request.GetResponse();
-                SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                SearchResult = JObject.Parse(SearchString);//解析搜索结果
-                SongList = (JArray)SearchResult["musics"];//搜索结果曲目列表
+                SongList = (JArray)SearchResult["albums"];//搜索结果曲目列表
+                if (null != SongList)
+                {
+                    if (SongList.Count > 0)
+                        search2nd = false;
+                }
             }
 
-            if (SongList.Count < 1)
+            if (search2nd)
+            {
+                SearchUrl = String.Format("http://music.163.com/api/search/pc?offset=0&limit=30&type=10&s={0}", Album.Replace("&", "%26"));
+                request = (HttpWebRequest)WebRequest.Create(SearchUrl);
+                request.Referer = "http://music.163.com/";
+                request.UserAgent = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; Maxthon; .NET CLR 1.1.4322)";
+                response = (HttpWebResponse)request.GetResponse();
+                SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                SearchResult = (JObject)JObject.Parse(SearchString)["result"];//解析搜索结果
+            }
+
+            if (null != SearchResult)
+            {
+                SongList = (JArray)SearchResult["albums"];//搜索结果曲目列表
+                if (null != SongList)
+                {
+                    if (SongList.Count > 0)
+                        search2nd = false;
+                }
+            }
+
+            if (search2nd)
                 return null;
 
             List<int> list_match_album = new List<int>();
@@ -227,7 +251,7 @@ namespace MusicBeePlugin
                 //result.albums.[1].picUrl
                 //https://img1.doubanio.com/view/subject/s/public/s6498438.jpg
 
-                String s = SongList[i]["picUrl"].ToString().ToLower();
+                String s = SongList[i]["picUrl"].ToString();
                 if (s.Replace(" ", "").Length < 10)
                     continue;
 
@@ -246,7 +270,7 @@ namespace MusicBeePlugin
                 if (Artist.Length > 0)
                 {
                     // 如果有多个艺术家（虽然这不规范），只匹配第一个。而检索结果对应了专辑艺术家、参与艺术家、发行方
-                    if ((SongList[i]["artists"]?? "").ToString().ToLower().Contains(Artist.ToLower())
+                    if ((SongList[i]["artists"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
                         || (SongList[i]["artist"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
                         || (SongList[i]["company"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
                         )
