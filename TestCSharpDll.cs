@@ -29,9 +29,9 @@ namespace MusicBeePlugin
             mbApiInterface = new MusicBeeApiInterface();
             mbApiInterface.Initialise(apiInterfacePtr);
             about.PluginInfoVersion = PluginInfoVersion;
-            about.Name = "Douban Music Artwork" + mode;
-            about.Description = "Get album cover from douban music.  " +
-                "\n从豆瓣音乐获取专辑封面，使用了豆瓣音乐Api V2";
+            about.Name = "QQ Music Artwork" + mode;
+            about.Description = "Get album cover from QQ music.  " +
+                "\n从QQ音乐获取专辑封面";
             about.Author = "Tumuyan";
             about.TargetApplication = "";   //  the name of a Plugin Storage device or panel header for a dockable panel
             about.Type = PluginType.ArtworkRetrieval;
@@ -115,7 +115,7 @@ namespace MusicBeePlugin
         {
             return new string[]
                          {
-                            "Douban"+mode
+                            "QQ"+mode
                          };
         }
 
@@ -140,7 +140,7 @@ namespace MusicBeePlugin
                     Artist = s1;
             }
 
-            return getDoubanCover(Artist, album);
+            return getQQCover(Artist, album);
 
 
             /*          MessageBox.Show(
@@ -186,6 +186,109 @@ namespace MusicBeePlugin
             Regex rgx = new Regex("[\\s\\]\\[\\(\\)`~!@#$%^&\\*()+=|{}':;',\\.<>/\\?~～〜（）「」［］！@#￥%……&*——+|{}【】‘；：”“’。，、？]");
             return rgx.Replace(s.ToLower(), "");
         }
+
+        private string getQQCover(String Artist, String Album)
+        {
+            if (Album.Replace(" ", "").Length < 1)
+                return null;
+
+            JArray SongList = new JArray();//搜索结果曲目列表
+            Boolean search2nd = true;
+
+            // 从API取回数据
+            //   https://c.y.qq.com/soso/fcgi-bin/client_search_cp?ct=24&qqmusic_ver=1298&remoteplace=txt.yqq.album&searchid=73290606213956540&aggr=0&catZhida=1&lossless=0&sem=10&t=8&p=1&n=5&w=miku&g_tk_new_20200303=5381&g_tk=5381&loginUin=0&hostUin=0&format=json&inCharset=utf8&outCharset=utf-8&notice=0&platform=yqq.json&needNewCode=0
+            // 简化参数
+            //   https://c.y.qq.com/soso/fcgi-bin/client_search_cp?ct=24&qqmusic_ver=1298&remoteplace=txt.yqq.album&aggr=0&lossless=0&sem=10&t=8&p=1&n=20&w=初音ミク&format=json&inCharset=utf8&outCharset=utf-8&platform=yqq.json
+
+            string SearchUrl = String.Format("https://c.y.qq.com/soso/fcgi-bin/client_search_cp?ct=24&qqmusic_ver=1298&remoteplace=txt.yqq.album&aggr=0&lossless=0&sem=10&t=8&p=1&n=20&format=json&inCharset=utf8&outCharset=utf-8&platform=yqq.json&w={0} {1}", Album.Replace("&", "%26"), Artist.Replace("&", "%26"));
+            var request = (HttpWebRequest)WebRequest.Create(SearchUrl);
+            request.Referer = "https://y.qq.com/";
+            var response = (HttpWebResponse)request.GetResponse();
+            var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
+            SearchString = SearchString
+                        .Replace("callback(", "")
+                        .Replace("})", "}");//删除回调中的多余字符
+            JObject SearchResult = JObject.Parse(SearchString);//解析搜索结果
+
+            if (null != SearchResult)
+            {
+                SongList = (JArray)SearchResult["data"]["album"]["list"];//搜索结果曲目列表
+                if (null != SongList)
+                {
+                    if (SongList.Count > 0)
+                        search2nd = false;
+                }
+            }
+
+            if (search2nd)
+            {
+                SearchUrl = String.Format("https://c.y.qq.com/soso/fcgi-bin/client_search_cp?ct=24&qqmusic_ver=1298&remoteplace=txt.yqq.album&aggr=0&lossless=0&sem=10&t=8&p=1&n=20&format=json&inCharset=utf8&outCharset=utf-8&platform=yqq.json&w={0}", Album.Replace("&", "%26"));
+
+                request = (HttpWebRequest)WebRequest.Create(SearchUrl);
+                request.Referer = "https://y.qq.com/";
+                response = (HttpWebResponse)request.GetResponse();
+                SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                SearchString = SearchString
+                            .Replace("callback(", "")
+                            .Replace("})", "}");//删除回调中的多余字符
+                SearchResult = JObject.Parse(SearchString);//解析搜索结果
+
+            }
+
+            if (null != SearchResult)
+            {
+                SongList = (JArray)SearchResult["data"]["album"]["list"];//搜索结果曲目列表
+                if (null != SongList)
+                {
+                    if (SongList.Count > 0)
+                        search2nd = false;
+                }
+            }
+
+            if (search2nd)
+                return null;
+
+            List<int> list_match_album = new List<int>();
+            List<int> list_match_artist = new List<int>();
+            List<int> list_match_title = new List<int>();
+            List<string> list_image = new List<string>();
+
+            string album = prepareString(Album);
+
+            for (int i = 0; i < SongList.Count; i++)
+            {
+                //data.album.list[4].albumPic
+                //http://y.gtimg.cn/music/photo_new/T002R180x180M000001ddOOX26S67A_1.jpg
+
+                String s = SongList[i]["albumPic"].ToString();
+                if (s.Replace(" ", "").Length < 10)
+                    continue;
+
+                list_image.Add(s.Replace("180x180", "800x800"));
+
+                // data.album.list[1].albumName
+                String title = prepareString((SongList[i]["albumName"] ?? "").ToString());
+                if (title.Contains(album) || album.Contains(title))
+                    list_match_album.Add(i);
+
+                //data.album.list[1].catch_song (虽然有这个节点，但是大量专辑没有内容）
+                if ((SongList[i]["catch_song"] ?? "").ToString().ToLower().Contains(album))
+                    list_match_title.Add(i);
+
+                //data.album.list[4].singer_list[1]  data.album.list[1].singerName
+                if (Artist.Length > 0)
+                {
+                    // 如果有多个艺术家（虽然这不规范），只匹配第一个。而检索结果对应了专辑艺术家、参与艺术家，QQ音乐没有提供发行方信息
+                    if ((SongList[i]["singer_list"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
+                        || (SongList[i]["singer_list"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
+                        )
+                        list_match_artist.Add(i);
+                }
+            }
+
+            return selectCover(list_match_album, list_match_artist, list_match_title, list_image);
+        }
+
 
         private string get163Cover(String Artist, String Album)
         {
