@@ -1,7 +1,7 @@
 
 #### Readme
-A Artwork Provider Plug-in for MusicBee.Each branch is a different provider.  
-now it could search album cover from music.douban.com, music.163.com, y.qq.com.   
+A Artwork Provider Plug-in for MusicBee. Each branch is a different provider.  
+now it could search album cover from music.douban.com, music.163.com, y.qq.com, vgmdb.info.   
 Also it is a template for a artwork provider plugin for MusicBee.
 
 #### How to use
@@ -9,7 +9,7 @@ unzip the release files to the MusicBee\Plugins folder, then the preferences-tag
 
 #### 说明
 这是一个在线搜索专辑封面的MusicBee插件。不同分支是不同的网站来源。  
-目前包含了豆瓣音乐，网易云音乐，QQ音乐。  
+目前包含了豆瓣音乐，网易云音乐，QQ音乐，vgmdb。  
 
 #### 使用
 解压文件到MusicBee安装路径的Plugins文件夹，
