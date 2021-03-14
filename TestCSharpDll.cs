@@ -38,7 +38,7 @@ namespace MusicBeePlugin
             about.Type = PluginType.ArtworkRetrieval;
             about.VersionMajor = 1;  // your plugin version
             about.VersionMinor = 0;
-            about.Revision = 1;
+            about.Revision = 2;
             about.MinInterfaceVersion = MinInterfaceVersion;
             about.MinApiRevision = MinApiRevision;
             about.ReceiveNotifications = (ReceiveNotificationFlags.PlayerEvents | ReceiveNotificationFlags.TagEvents);
@@ -335,16 +335,37 @@ namespace MusicBeePlugin
                 return null;
             // 从API取回搜索结构
 
-            string SearchUrl = String.Format("http://vgmdb.info/search/albums?q={0}", Album).Replace("&", "%26")+ "&format=json";
+            List<string> album_urls;
 
-            JObject SearchResult = requestJObject(SearchUrl);//解析搜索结果
-            JArray SongList = (JArray)SearchResult["results"]["albums"];//搜索结果专辑列表
+            if (!String.IsNullOrEmpty(Artist))
+            {
+                album_urls =  vgmdb_advancedsearch(Artist, Album);
+            }
+            else
+            {
+                album_urls = new List<string>();
+            }
 
-            if (SongList ==null)
-                return null;
+            if (album_urls.Count < 1)
+            {
+                string SearchUrl = String.Format("http://vgmdb.info/search/albums?q={0}", Album).Replace("&", "%26") + "&format=json";
 
-            if (SongList.Count < 1)
-                return null;
+                JObject SearchResult = requestJObject(SearchUrl);//解析搜索结果
+                JArray SongList = (JArray)SearchResult["results"]["albums"];//搜索结果专辑列表
+
+                if (SongList == null)
+                    return null;
+
+                if (SongList.Count < 1)
+                    return null;
+
+                count_load_album = Math.Min(10, SongList.Count);
+
+                for (int i = 0; i < SongList.Count; i++)
+                {
+                    album_urls.Add("http://vgmdb.info/" + SongList[i]["link"].ToString() + "?format=json");
+                }
+            }
 
             List<int> list_match_album = new List<int>();
             List<int> list_match_artist = new List<int>();
@@ -355,12 +376,11 @@ namespace MusicBeePlugin
             event_load_album.Reset();
 
             // 至多检查10个搜索结果
-            count_load_album = Math.Min(10, SongList.Count);
+            count_load_album = Math.Min(10, album_urls.Count);
 
             for (int i = 0; i < count_load_album; i++)
             {
-                String album_url = "http://vgmdb.info/" + SongList[i]["link"].ToString() + "?format=json";
-                ThreadPool.QueueUserWorkItem(new WaitCallback(loadVGMdbAlbum), album_url);
+                ThreadPool.QueueUserWorkItem(new WaitCallback(loadVGMdbAlbum), album_urls[i]);
             }
 
             event_load_album.WaitOne(Timeout.Infinite, true);
@@ -395,6 +415,7 @@ namespace MusicBeePlugin
 
         }
 
+        // 使用vgmdb.info的API，获取专辑页面内的信息
         class VGMdbAlbum
         {
             public string cover = "";
@@ -435,28 +456,62 @@ namespace MusicBeePlugin
             }
         }
 
-
-        static  private JObject requestJObject(string url)
+        // 使用vgmdb.net的高级搜索功能，同时检索专辑和艺术家两种信息，并取回专辑的url列表
+        static  private List<string> vgmdb_advancedsearch(string artist, string album)
         {
+            List<string> album_urls = new List<string>();
             try
             {
-                if (String.IsNullOrEmpty(url))
                 {
-                    var request = (HttpWebRequest)WebRequest.Create(url);
-                    var response = (HttpWebResponse)request.GetResponse();
-                    var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                    if (String.IsNullOrEmpty(SearchString))
-                        return JObject.Parse(SearchString);
+                    var request = (HttpWebRequest)WebRequest.Create("https://vgmdb.net/search?do=results");
+                    request.Method = "POST";
+                    request.ContentType = "application/x-www-form-urlencoded";
+                    string data = "action=advancedsearch&platformmodifier=contain_and&collectionmodifier=0&tracklistmodifier=is&sortby=albumtitle&orderby=ASC&dosearch=Search Albums Now"
+                        + "&albumtitles=" + album + "&artistalias=" + artist;
+            //        request.ContentLength = data.Length;
+
+                    StreamWriter writer = new StreamWriter(request.GetRequestStream());
+                    writer.Write(data);
+                    writer.Flush();
+                    HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                    StreamReader reader = new StreamReader(response.GetResponseStream());
+                    string retString = reader.ReadToEnd();
+
+                    string pattern = @"https://vgmdb.net/album/\d+";
+              //    href =\"https://vgmdb.net/album/67360\"
+
+                    foreach (Match match in Regex.Matches(retString, pattern))
+                        album_urls.Add(match.Value.Replace("https://vgmdb.net/album/", "http://vgmdb.info/album/") + "?format=json");
                 }
             }
             catch(Exception e)
             {
-                Console.WriteLine("requestJObject:"+url);
                 Console.WriteLine(e);
             }
-            return JObject.Parse("");
+            return album_urls;
         }
 
+        // 访问url并解析为JsonObject
+        static private JObject requestJObject(string url)
+        {
+            try
+            {
+                if (!String.IsNullOrEmpty(url))
+                {
+                    var request = (HttpWebRequest)WebRequest.Create(url);
+                    var response = (HttpWebResponse)request.GetResponse();
+                    var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                    if (!String.IsNullOrEmpty(SearchString))
+                        return JObject.Parse(SearchString);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("requestJObject:" + url);
+                Console.WriteLine(e);
+            }
+            return JObject.Parse("{}");
+        }
 
 
         /// <summary>
