@@ -143,42 +143,6 @@ namespace MusicBeePlugin
 
             return getVGMdbCover(Artist, album);
 
-
-            /*          MessageBox.Show(
-                          "albumartist:" + albumArtist
-                        + "\nalbum:" + album
-                        + "\nprovider:" + provider
-                        + "\nsource:" + sourceFileUrl
-                        + "\nurl:" + url
-                        , "plug debug info", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-
-                       // 把图像从url取回并转换为base64字符串
-                              string url = "https://img1.doubanio.com/view/subject/public/s28790429.jpg";
-                              var request2 = (HttpWebRequest)WebRequest.Create(url);
-                              byte[] bytes;
-                              using (Stream stream = request2.GetResponse().GetResponseStream())
-                              {
-                                  using (MemoryStream mstream = new MemoryStream())
-                                  {
-                                      int count = 0;
-                                      byte[] buffer = new byte[1024];
-                                      int readNum = 0;
-                                      while ((readNum = stream.Read(buffer, 0, 1024)) > 0)
-                                      {
-                                          count = count + readNum;
-                                          mstream.Write(buffer, 0, readNum);
-                                      }
-                                      mstream.Position = 0;
-                                      using (BinaryReader br = new BinaryReader(mstream))
-                                      {
-                                          bytes = br.ReadBytes(count);
-                                      }
-                                  }
-                              }
-                              return Convert.ToBase64String(bytes);
-            */
-
         }
 
         // 专辑名需要预处理，降低由于标点符号差异造成的影响
@@ -291,20 +255,13 @@ namespace MusicBeePlugin
 
             string SearchUrl = String.Format("https://api.douban.com/v2/music/search?q={0} {1}", Album, Artist).Replace("&", "%26");
 
-            var request = (HttpWebRequest)WebRequest.Create(SearchUrl);
-            var response = (HttpWebResponse)request.GetResponse();
-            var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
-
-            JObject SearchResult = JObject.Parse(SearchString);//解析搜索结果
+            JObject SearchResult =  requestJObject(SearchUrl);//解析搜索结果
             JArray SongList = (JArray)SearchResult["musics"];//搜索结果曲目列表
 
             if (SongList.Count < 1)
             {
                 SearchUrl = String.Format("https://api.douban.com/v2/music/search?q={0}", Album).Replace("&", "%26");
-                request = (HttpWebRequest)WebRequest.Create(SearchUrl);
-                response = (HttpWebResponse)request.GetResponse();
-                SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                SearchResult = JObject.Parse(SearchString);//解析搜索结果
+                SearchResult = requestJObject(SearchUrl);//解析搜索结果
                 SongList = (JArray)SearchResult["musics"];//搜索结果曲目列表
             }
 
@@ -380,32 +337,8 @@ namespace MusicBeePlugin
 
             string SearchUrl = String.Format("http://vgmdb.info/search/albums?q={0}", Album).Replace("&", "%26")+ "&format=json";
 
-            var request = (HttpWebRequest)WebRequest.Create(SearchUrl);
-            var response = (HttpWebResponse)request.GetResponse();
-            var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
-
-            JObject SearchResult = JObject.Parse(SearchString);//解析搜索结果
+            JObject SearchResult = requestJObject(SearchUrl);//解析搜索结果
             JArray SongList = (JArray)SearchResult["results"]["albums"];//搜索结果专辑列表
-
-/*            
-            bool retry = true;
-
-            if (SongList != null)
-            {
-                if (SongList.Count > 0)
-                    retry = false;
-            }
-
-            if (retry)
-            {
-                SearchUrl = String.Format("http://vgmdb.info/search?q={0}", Album).Replace("&", "%26")+ "&format=json";
-                request = (HttpWebRequest)WebRequest.Create(SearchUrl);
-                response = (HttpWebResponse)request.GetResponse();
-                SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                SearchResult = JObject.Parse(SearchString);//解析搜索结果
-                SongList = (JArray)SearchResult["results"]["albums"];//搜索结果专辑列表
-            }
-*/
 
             if (SongList ==null)
                 return null;
@@ -474,39 +407,55 @@ namespace MusicBeePlugin
 
             public VGMdbAlbum(string url)
             {
-                var request = (HttpWebRequest)WebRequest.Create(url);
-                var response = (HttpWebResponse)request.GetResponse();
-                var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                SearchResult = requestJObject(url);//解析专辑
 
-                SearchResult = JObject.Parse(SearchString);//解析专辑
-                cover = SearchResult["picture_full"].ToString();
                 type = 0;
-                if (String.IsNullOrEmpty(cover))
+                if (SearchResult != null)
                 {
-                    cover = SearchResult["picture_full"].ToString();
-                    type = 1;
-                    if (String.IsNullOrEmpty(cover))
-                    {
-                        cover = SearchResult["picture_small"].ToString();
-                        type = 2;
+                        cover = SearchResult["picture_full"].ToString();
+                        type = 1;
                         if (String.IsNullOrEmpty(cover))
                         {
-                            cover = "";
-                            type = 10;
+                            cover = SearchResult["picture_small"].ToString();
+                            type = 2;
+                            if (String.IsNullOrEmpty(cover))
+                            {
+                                cover = "";
+                                type = 10;
+                            }
                         }
-                    }
-
                 }
+
                 artist = SearchResult["performers"].ToString();
                 if (String.IsNullOrEmpty(artist))
                     artist = "";
                 
                 name ="" + SearchResult["name"].ToString() + "\n" + SearchResult["names"].ToString();
 
-
             }
         }
 
+
+        static  private JObject requestJObject(string url)
+        {
+            try
+            {
+                if (String.IsNullOrEmpty(url))
+                {
+                    var request = (HttpWebRequest)WebRequest.Create(url);
+                    var response = (HttpWebResponse)request.GetResponse();
+                    var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                    if (String.IsNullOrEmpty(SearchString))
+                        return JObject.Parse(SearchString);
+                }
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine("requestJObject:"+url);
+                Console.WriteLine(e);
+            }
+            return JObject.Parse("");
+        }
 
 
 
