@@ -9,6 +9,7 @@ using Newtonsoft.Json.Linq;
 using System.Web;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace MusicBeePlugin
 {
@@ -37,7 +38,7 @@ namespace MusicBeePlugin
             about.Type = PluginType.ArtworkRetrieval;
             about.VersionMajor = 1;  // your plugin version
             about.VersionMinor = 0;
-            about.Revision = 1;
+            about.Revision = 2;
             about.MinInterfaceVersion = MinInterfaceVersion;
             about.MinApiRevision = MinApiRevision;
             about.ReceiveNotifications = (ReceiveNotificationFlags.PlayerEvents | ReceiveNotificationFlags.TagEvents);
@@ -142,42 +143,6 @@ namespace MusicBeePlugin
 
             return get163Cover(Artist, album);
 
-
-            /*          MessageBox.Show(
-                          "albumartist:" + albumArtist
-                        + "\nalbum:" + album
-                        + "\nprovider:" + provider
-                        + "\nsource:" + sourceFileUrl
-                        + "\nurl:" + url
-                        , "plug debug info", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-
-                       // 把图像从url取回并转换为base64字符串
-                              string url = "https://img1.doubanio.com/view/subject/public/s28790429.jpg";
-                              var request2 = (HttpWebRequest)WebRequest.Create(url);
-                              byte[] bytes;
-                              using (Stream stream = request2.GetResponse().GetResponseStream())
-                              {
-                                  using (MemoryStream mstream = new MemoryStream())
-                                  {
-                                      int count = 0;
-                                      byte[] buffer = new byte[1024];
-                                      int readNum = 0;
-                                      while ((readNum = stream.Read(buffer, 0, 1024)) > 0)
-                                      {
-                                          count = count + readNum;
-                                          mstream.Write(buffer, 0, readNum);
-                                      }
-                                      mstream.Position = 0;
-                                      using (BinaryReader br = new BinaryReader(mstream))
-                                      {
-                                          bytes = br.ReadBytes(count);
-                                      }
-                                  }
-                              }
-                              return Convert.ToBase64String(bytes);
-            */
-
         }
 
         // 专辑名需要预处理，降低由于标点符号差异造成的影响
@@ -192,51 +157,27 @@ namespace MusicBeePlugin
             if (Album.Replace(" ", "").Length < 1)
                 return null;
 
-            JArray SongList = new JArray();//搜索结果曲目列表
-            Boolean search2nd = true;
-
             // 从API取回数据
 
-            string SearchUrl = String.Format("http://music.163.com/api/search/pc?offset=0&limit=30&type=10&s={0} {1}", Album.Replace("&", "%26"), Artist.Replace("&", "%26"));
+            string SearchUrl = String.Format("http://music.163.com/api/search/pc?offset=0&limit=30&type=10&s={0} {1}", Album,Artist).Replace("&", "%26");
             var request = (HttpWebRequest)WebRequest.Create(SearchUrl);
-            request.Referer = "http://music.163.com/";
-            request.UserAgent = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; Maxthon; .NET CLR 1.1.4322)";
             var response = (HttpWebResponse)request.GetResponse();
             var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
-            JObject SearchResult = (JObject)JObject.Parse(SearchString)["result"];//解析搜索结果
 
-            if (null != SearchResult)
-            {
-                SongList = (JArray)SearchResult["albums"];//搜索结果曲目列表
-                if (null != SongList)
-                {
-                    if (SongList.Count > 0)
-                        search2nd = false;
-                }
-            }
+            JObject SearchResult = JObject.Parse(SearchString);//解析搜索结果
+            JArray SongList = (JArray)SearchResult["result"]["albums"];//搜索结果曲目列表
 
-            if (search2nd)
+            if (SongList.Count < 1)
             {
-                SearchUrl = String.Format("http://music.163.com/api/search/pc?offset=0&limit=30&type=10&s={0}", Album.Replace("&", "%26"));
+                SearchUrl = String.Format("http://music.163.com/api/search/pc?offset=0&limit=30&type=10&s={0}", Album).Replace("&", "%26");
                 request = (HttpWebRequest)WebRequest.Create(SearchUrl);
-                request.Referer = "http://music.163.com/";
-                request.UserAgent = "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1; Maxthon; .NET CLR 1.1.4322)";
                 response = (HttpWebResponse)request.GetResponse();
                 SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                SearchResult = (JObject)JObject.Parse(SearchString)["result"];//解析搜索结果
+                SearchResult = JObject.Parse(SearchString);//解析搜索结果
+                SongList = (JArray)SearchResult["musics"];//搜索结果曲目列表
             }
 
-            if (null != SearchResult)
-            {
-                SongList = (JArray)SearchResult["albums"];//搜索结果曲目列表
-                if (null != SongList)
-                {
-                    if (SongList.Count > 0)
-                        search2nd = false;
-                }
-            }
-
-            if (search2nd)
+            if (SongList.Count < 1)
                 return null;
 
             List<int> list_match_album = new List<int>();
@@ -251,7 +192,7 @@ namespace MusicBeePlugin
                 //result.albums.[1].picUrl
                 //https://img1.doubanio.com/view/subject/s/public/s6498438.jpg
 
-                String s = SongList[i]["picUrl"].ToString();
+                String s = SongList[i]["picUrl"].ToString().ToLower();
                 if (s.Replace(" ", "").Length < 10)
                     continue;
 
@@ -287,23 +228,21 @@ namespace MusicBeePlugin
             if (Album.Replace(" ", "").Length < 1)
                 return null;
             // 从API取回数据
+            
+            string SearchUrl = "https://api.douban.com/v2/music/search?q="
+                + HttpUtility.UrlEncode(Album + " " + Artist, System.Text.UnicodeEncoding.GetEncoding("UTF-8")) 
+                + "&apiKey=054022eaeae0b00e0fc068c0c0a2102a";
 
-            string SearchUrl = String.Format("https://api.douban.com/v2/music/search?q={0} {1}", Album, Artist).Replace("&", "%26");
-
-            var request = (HttpWebRequest)WebRequest.Create(SearchUrl);
-            var response = (HttpWebResponse)request.GetResponse();
-            var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
-
-            JObject SearchResult = JObject.Parse(SearchString);//解析搜索结果
+            JObject SearchResult =  requestJObject(SearchUrl);//解析搜索结果
             JArray SongList = (JArray)SearchResult["musics"];//搜索结果曲目列表
 
             if (SongList.Count < 1)
             {
-                SearchUrl = String.Format("https://api.douban.com/v2/music/search?q={0}", Album).Replace("&", "%26");
-                request = (HttpWebRequest)WebRequest.Create(SearchUrl);
-                response = (HttpWebResponse)request.GetResponse();
-                SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                SearchResult = JObject.Parse(SearchString);//解析搜索结果
+                SearchUrl = "https://api.douban.com/v2/music/search?q="
+                + HttpUtility.UrlEncode(Album, System.Text.UnicodeEncoding.GetEncoding("UTF-8"))
+                + "&apiKey=054022eaeae0b00e0fc068c0c0a2102a";
+
+                SearchResult = requestJObject(SearchUrl);//解析搜索结果
                 SongList = (JArray)SearchResult["musics"];//搜索结果曲目列表
             }
 
@@ -351,6 +290,28 @@ namespace MusicBeePlugin
 
             return selectCover(list_match_album, list_match_artist, list_match_title, list_image);
 
+        }
+
+        // 访问url并解析为JsonObject
+        static private JObject requestJObject(string url)
+        {
+            try
+            {
+                if (!String.IsNullOrEmpty(url))
+                {
+                    var request = (HttpWebRequest)WebRequest.Create(url);
+                    var response = (HttpWebResponse)request.GetResponse();
+                    var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                    if (!String.IsNullOrEmpty(SearchString))
+                        return JObject.Parse(SearchString);
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("requestJObject:" + url);
+                Console.WriteLine(e);
+            }
+            return JObject.Parse("{}");
         }
 
 
