@@ -145,8 +145,6 @@ namespace MusicBeePlugin
 
         }
 
-        }
-
         // 专辑名需要预处理，降低由于标点符号差异造成的影响
         private string prepareString(string s)
         {
@@ -230,15 +228,20 @@ namespace MusicBeePlugin
             if (Album.Replace(" ", "").Length < 1)
                 return null;
             // 从API取回数据
-
-            string SearchUrl = String.Format("https://api.douban.com/v2/music/search?q={0} {1}", Album, Artist).Replace("&", "%26");
+            
+            string SearchUrl = "https://api.douban.com/v2/music/search?q="
+                + HttpUtility.UrlEncode(Album + " " + Artist, System.Text.UnicodeEncoding.GetEncoding("UTF-8")) 
+                + "&apiKey=054022eaeae0b00e0fc068c0c0a2102a";
 
             JObject SearchResult =  requestJObject(SearchUrl);//解析搜索结果
             JArray SongList = (JArray)SearchResult["musics"];//搜索结果曲目列表
 
             if (SongList.Count < 1)
             {
-                SearchUrl = String.Format("https://api.douban.com/v2/music/search?q={0}", Album).Replace("&", "%26");
+                SearchUrl = "https://api.douban.com/v2/music/search?q="
+                + HttpUtility.UrlEncode(Album, System.Text.UnicodeEncoding.GetEncoding("UTF-8"))
+                + "&apiKey=054022eaeae0b00e0fc068c0c0a2102a";
+
                 SearchResult = requestJObject(SearchUrl);//解析搜索结果
                 SongList = (JArray)SearchResult["musics"];//搜索结果曲目列表
             }
