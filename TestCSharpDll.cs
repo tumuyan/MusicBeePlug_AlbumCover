@@ -24,6 +24,7 @@ namespace MusicBeePlugin
 # endif
         private MusicBeeApiInterface mbApiInterface;
         private PluginInfo about = new PluginInfo();
+        private static CookieContainer myCookieContainer = new CookieContainer();
 
         public PluginInfo Initialise(IntPtr apiInterfacePtr)
         {
@@ -43,6 +44,8 @@ namespace MusicBeePlugin
             about.MinApiRevision = MinApiRevision;
             about.ReceiveNotifications = (ReceiveNotificationFlags.PlayerEvents | ReceiveNotificationFlags.TagEvents);
             about.ConfigurationPanelHeight = 0;   // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
+
+            loadCookie("os=pc; osver=Microsoft-Windows-10-Professional-build-10586-64bit; appver=2.0.3.131777; channel=netease; __remember_me=true;NMTID=00Om_v;", "http://music.163.com");
             return about;
         }
 
@@ -50,6 +53,7 @@ namespace MusicBeePlugin
         {
             // save any persistent settings in a sub-folder of this path
             string dataPath = mbApiInterface.Setting_GetPersistentStoragePath();
+
             // panelHandle will only be set if you set about.ConfigurationPanelHeight to a non-zero value
             // keep in mind the panel width is scaled according to the font the user has selected
             // if about.ConfigurationPanelHeight is set to 0, you can display your own popup window
@@ -78,6 +82,8 @@ namespace MusicBeePlugin
         // MusicBee is closing the plugin (plugin is being disabled by user or MusicBee is shutting down)
         public void Close(PluginCloseReason reason)
         {
+            saveCookie("http://music.163.com");
+            Console.WriteLine("close "+reason);
         }
 
         // uninstall this plugin - clean up any persisted files
@@ -164,23 +170,18 @@ namespace MusicBeePlugin
 
             string[] SearchUrls;
 
+            string base_url = "http://music.163.com/api/search/pc?offset=0&limit=30&type=10&s=" + HttpUtility.UrlEncode(Album);
+
 
             if (String.IsNullOrEmpty(Artist))
             {
-                SearchUrls = new string[] { String.Format("http://music.163.com/api/search/pc?offset=0&limit=30&type=10&s={0}", Album.Replace("&", "%26")) };
+                SearchUrls = new string[] { base_url };
             }
 
             else
             {
-                SearchUrls = new string[]{
-                String.Format("http://music.163.com/api/search/pc?offset=0&limit=30&type=10&s={0} {1}", Album.Replace("&", "%26"), Artist.Replace("&", "%26")),
-            String.Format("http://music.163.com/api/search/pc?offset=0&limit=30&type=10&s={0}", Album.Replace("&", "%26"))
-
-            };
+                SearchUrls = new string[] { base_url + HttpUtility.UrlEncode(" " + Artist), base_url };
             }
-
-
-
 
             List<int> list_match_album = new List<int>();
             List<int> list_match_artist = new List<int>();
@@ -231,6 +232,8 @@ namespace MusicBeePlugin
                         }
                     }
                 }
+
+                Console.WriteLine("search 163: load");
             }
 
 
@@ -309,6 +312,97 @@ namespace MusicBeePlugin
 
         }
 
+
+        private void loadCookie(string default_cookie, string domain)
+        {
+            Uri domain_uri = new Uri(domain);
+            string configPath = Path.Combine(mbApiInterface.Setting_GetPersistentStoragePath(), about.Name);
+            string cookie = default_cookie;
+            if (File.Exists(configPath))
+            {
+
+                try
+                {
+                    cookie = cookie + (File.ReadAllText(configPath, System.Text.Encoding.UTF8));
+
+                }
+                catch (Exception ex)
+                {
+                    mbApiInterface.MB_Trace(about.Name + " Failed to load config" + ex);
+                }
+
+                string[] tempCookies = cookie.Split(';');
+                string tempCookie = null;
+                int Equallength = 0;//  =的位置
+                string cookieKey = null;
+                string cookieValue = null;
+
+                for (int i = 0; i < tempCookies.Length; i++)
+                {
+                    if (!string.IsNullOrEmpty(tempCookies[i]))
+                    {
+                        tempCookie = tempCookies[i];
+
+                        Equallength = tempCookie.IndexOf("=");
+
+                        if (Equallength != -1)       //有可能cookie 无=，就直接一个cookiename；比如:a=3;ck;abc=;
+                        {
+
+                            cookieKey = tempCookie.Substring(0, Equallength).Trim();
+                            //cookie=
+
+                            if (Equallength == tempCookie.Length - 1)    //这种是等号后面无值，如：abc=;
+                            {
+                                cookieValue = "";
+                            }
+                            else
+                            {
+                                cookieValue = tempCookie.Substring(Equallength + 1, tempCookie.Length - Equallength - 1).Trim();
+                            }
+                        }
+
+                        else
+                        {
+                            cookieKey = tempCookie.Trim();
+                            cookieValue = "";
+                        }
+
+                        myCookieContainer.Add(domain_uri,new Cookie(cookieKey, cookieValue));
+
+                    }
+
+                }
+
+            }
+        }
+
+
+        private void saveCookie(string site)
+        {
+
+            string configPath = Path.Combine(mbApiInterface.Setting_GetPersistentStoragePath(), about.Name);
+          //  if (File.Exists(configPath))
+            {
+                try
+                {
+                    var cookies = myCookieContainer.GetCookies(new Uri(site));
+                    string tmp = "";
+                    foreach(Cookie cookie in cookies)
+                    {
+                        tmp = tmp + cookie.ToString()+";";
+                    }
+                    File.WriteAllText(configPath, tmp);
+                    Console.WriteLine("saveCookie path="+configPath+"; site="+site);
+
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex);
+                }
+            }
+        }
+
+
         // 访问url并解析为JsonObject
         static private JObject requestJObject(string url)
         {
@@ -317,10 +411,22 @@ namespace MusicBeePlugin
                 if (!String.IsNullOrEmpty(url))
                 {
                     var request = (HttpWebRequest)WebRequest.Create(url);
+
+                    request.CookieContainer = myCookieContainer;
+                    request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36 Edg/89.0.774.54";
+                    request.Timeout = 8000;
+                    request.ReadWriteTimeout = 8000;
+
                     var response = (HttpWebResponse)request.GetResponse();
                     var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                    myCookieContainer.Add(response.Cookies);
+
                     if (!String.IsNullOrEmpty(SearchString))
+                    {
+                        Console.WriteLine("request result str: " + SearchString.Substring(0, Math.Min(100, SearchString.Length - 1)));
                         return JObject.Parse(SearchString);
+                    }
+
                 }
             }
             catch (Exception e)
