@@ -24,6 +24,8 @@ namespace MusicBeePlugin
 # endif
         private MusicBeeApiInterface mbApiInterface;
         private PluginInfo about = new PluginInfo();
+        private static CookieContainer myCookieContainer = new CookieContainer();
+
 
         public PluginInfo Initialise(IntPtr apiInterfacePtr)
         {
@@ -44,7 +46,7 @@ namespace MusicBeePlugin
             about.ReceiveNotifications = (ReceiveNotificationFlags.PlayerEvents | ReceiveNotificationFlags.TagEvents);
             about.ConfigurationPanelHeight = 0;   // height in pixels that musicbee should reserve in a panel for config settings. When set, a handle to an empty panel will be passed to the Configure function
 
-            loadCookie("os=pc; osver=Microsoft-Windows-10-Professional-build-10586-64bit; appver=2.0.3.131777; channel=netease; __remember_me=true;NMTID=00Om_v;", "http://music.163.com");
+            //           loadCookie("os=pc; osver=Microsoft-Windows-10-Professional-build-10586-64bit; appver=2.0.3.131777; channel=netease; __remember_me=true;NMTID=00Om_v;", "http://music.163.com");
             return about;
         }
 
@@ -81,8 +83,8 @@ namespace MusicBeePlugin
         // MusicBee is closing the plugin (plugin is being disabled by user or MusicBee is shutting down)
         public void Close(PluginCloseReason reason)
         {
-            saveCookie("http://music.163.com");
-            Console.WriteLine("close "+reason);
+            //           saveCookie("http://music.163.com");
+            //           Console.WriteLine("close "+reason);
         }
 
         // uninstall this plugin - clean up any persisted files
@@ -130,7 +132,7 @@ namespace MusicBeePlugin
         // return null if no artwork is found
         public string RetrieveArtwork(string sourceFileUrl, string albumArtist, string album, string provider)
         {
-            // 预处理输入参数
+            // 预处理输入参数，只保留一个艺术家
             string[] artists = albumArtist.Split(';', ',', '\\', '/', '&');
 
             string artist = "";
@@ -145,12 +147,11 @@ namespace MusicBeePlugin
                 if (Artist.Length < 1)
                     Artist = s1;
             }
-
-            return getQQCover(Artist, album);
-
-        }
+            // 专辑名称同样需要预处理
+            return getQQCover(Artist, album.Replace('〜',' '));
 
         }
+
 
         // 专辑名需要预处理，降低由于标点符号差异造成的影响
         private string prepareString(string s)
@@ -165,60 +166,21 @@ namespace MusicBeePlugin
                 return null;
 
             JArray SongList = new JArray();//搜索结果曲目列表
-            Boolean search2nd = true;
 
-            // 从API取回数据
-            //   https://c.y.qq.com/soso/fcgi-bin/client_search_cp?ct=24&qqmusic_ver=1298&remoteplace=txt.yqq.album&searchid=73290606213956540&aggr=0&catZhida=1&lossless=0&sem=10&t=8&p=1&n=5&w=miku&g_tk_new_20200303=5381&g_tk=5381&loginUin=0&hostUin=0&format=json&inCharset=utf8&outCharset=utf-8&notice=0&platform=yqq.json&needNewCode=0
-            // 简化参数
-            //   https://c.y.qq.com/soso/fcgi-bin/client_search_cp?ct=24&qqmusic_ver=1298&remoteplace=txt.yqq.album&aggr=0&lossless=0&sem=10&t=8&p=1&n=20&w=初音ミク&format=json&inCharset=utf8&outCharset=utf-8&platform=yqq.json
+            string[] SearchUrls;
 
-            string SearchUrl = String.Format("https://c.y.qq.com/soso/fcgi-bin/client_search_cp?ct=24&qqmusic_ver=1298&remoteplace=txt.yqq.album&aggr=0&lossless=0&sem=10&t=8&p=1&n=20&format=json&inCharset=utf8&outCharset=utf-8&platform=yqq.json&w={0} {1}", Album.Replace("&", "%26"), Artist.Replace("&", "%26"));
-            var request = (HttpWebRequest)WebRequest.Create(SearchUrl);
-            request.Referer = "https://y.qq.com/";
-            var response = (HttpWebResponse)request.GetResponse();
-            var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
-            SearchString = SearchString
-                        .Replace("callback(", "")
-                        .Replace("})", "}");//删除回调中的多余字符
-            JObject SearchResult = JObject.Parse(SearchString);//解析搜索结果
+            string base_url = "https://c.y.qq.com/soso/fcgi-bin/client_search_cp?ct=24&qqmusic_ver=1298&remoteplace=txt.yqq.album&aggr=0&lossless=0&sem=10&t=8&p=1&n=20&format=json&inCharset=utf8&outCharset=utf-8&platform=yqq.json&w=" + HttpUtility.UrlEncode(Album);
 
-            if (null != SearchResult)
+            if (String.IsNullOrEmpty(Artist))
             {
-                SongList = (JArray)SearchResult["data"]["album"]["list"];//搜索结果曲目列表
-                if (null != SongList)
-                {
-                    if (SongList.Count > 0)
-                        search2nd = false;
-                }
+                SearchUrls = new string[] { base_url };
             }
 
-            if (search2nd)
+            else
             {
-                SearchUrl = String.Format("https://c.y.qq.com/soso/fcgi-bin/client_search_cp?ct=24&qqmusic_ver=1298&remoteplace=txt.yqq.album&aggr=0&lossless=0&sem=10&t=8&p=1&n=20&format=json&inCharset=utf8&outCharset=utf-8&platform=yqq.json&w={0}", Album.Replace("&", "%26"));
-
-                request = (HttpWebRequest)WebRequest.Create(SearchUrl);
-                request.Referer = "https://y.qq.com/";
-                response = (HttpWebResponse)request.GetResponse();
-                SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                SearchString = SearchString
-                            .Replace("callback(", "")
-                            .Replace("})", "}");//删除回调中的多余字符
-                SearchResult = JObject.Parse(SearchString);//解析搜索结果
-
+                SearchUrls = new string[] { base_url + HttpUtility.UrlEncode(" " + Artist), base_url };
             }
 
-            if (null != SearchResult)
-            {
-                SongList = (JArray)SearchResult["data"]["album"]["list"];//搜索结果曲目列表
-                if (null != SongList)
-                {
-                    if (SongList.Count > 0)
-                        search2nd = false;
-                }
-            }
-
-            if (search2nd)
-                return null;
 
             List<int> list_match_album = new List<int>();
             List<int> list_match_artist = new List<int>();
@@ -227,34 +189,46 @@ namespace MusicBeePlugin
 
             string album = prepareString(Album);
 
-            for (int i = 0; i < SongList.Count; i++)
+            foreach (string SearchUrl in SearchUrls)
             {
-                //data.album.list[4].albumPic
-                //http://y.gtimg.cn/music/photo_new/T002R180x180M000001ddOOX26S67A_1.jpg
 
-                String s = SongList[i]["albumPic"].ToString();
-                if (s.Replace(" ", "").Length < 10)
-                    continue;
+                JObject SearchResult = requestJObject(SearchUrl, "https://y.qq.com/");
 
-                list_image.Add(s.Replace("180x180", "800x800"));
-
-                // data.album.list[1].albumName
-                String title = prepareString((SongList[i]["albumName"] ?? "").ToString());
-                if (title.Contains(album) || album.Contains(title))
-                    list_match_album.Add(i);
-
-                //data.album.list[1].catch_song (虽然有这个节点，但是大量专辑没有内容）
-                if ((SongList[i]["catch_song"] ?? "").ToString().ToLower().Contains(album))
-                    list_match_title.Add(i);
-
-                //data.album.list[4].singer_list[1]  data.album.list[1].singerName
-                if (Artist.Length > 0)
+                if (null != SearchResult["data"]["album"]["list"])
                 {
-                    // 如果有多个艺术家（虽然这不规范），只匹配第一个。而检索结果对应了专辑艺术家、参与艺术家，QQ音乐没有提供发行方信息
-                    if ((SongList[i]["singer_list"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
-                        || (SongList[i]["singer_list"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
-                        )
-                        list_match_artist.Add(i);
+                    SongList = (JArray)SearchResult["data"]["album"]["list"];//搜索结果曲目列表
+
+                    for (int i = 0; i < SongList.Count; i++)
+                    {
+                        //data.album.list[4].albumPic
+                        //http://y.gtimg.cn/music/photo_new/T002R180x180M000001ddOOX26S67A_1.jpg
+
+                        String s = SongList[i]["albumPic"].ToString();
+                        if (s.Replace(" ", "").Length < 10)
+                            continue;
+
+                        list_image.Add(s.Replace("180x180", "800x800"));
+
+                        // data.album.list[1].albumName
+                        String title = prepareString((SongList[i]["albumName"] ?? "").ToString());
+                        if (title.Contains(album) || album.Contains(title))
+                            list_match_album.Add(i);
+
+                        //data.album.list[1].catch_song (虽然有这个节点，但是大量专辑没有内容）
+                        if ((SongList[i]["catch_song"] ?? "").ToString().ToLower().Contains(album))
+                            list_match_title.Add(i);
+
+                        //data.album.list[4].singer_list[1]  data.album.list[1].singerName
+                        if (Artist.Length > 0)
+                        {
+                            // 如果有多个艺术家（虽然这不规范），只匹配第一个。而检索结果对应了专辑艺术家、参与艺术家，QQ音乐没有提供发行方信息
+                            if ((SongList[i]["singer_list"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
+                                || (SongList[i]["singer_list"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
+                                )
+                                list_match_artist.Add(i);
+                        }
+                    }
+
                 }
             }
 
@@ -267,12 +241,12 @@ namespace MusicBeePlugin
             if (Album.Replace(" ", "").Length < 1)
                 return null;
             // 从API取回数据
-            
+
             string SearchUrl = "https://api.douban.com/v2/music/search?q="
-                + HttpUtility.UrlEncode(Album + " " + Artist, System.Text.UnicodeEncoding.GetEncoding("UTF-8")) 
+                + HttpUtility.UrlEncode(Album + " " + Artist, System.Text.UnicodeEncoding.GetEncoding("UTF-8"))
                 + "&apiKey=054022eaeae0b00e0fc068c0c0a2102a";
 
-            JObject SearchResult =  requestJObject(SearchUrl);//解析搜索结果
+            JObject SearchResult = requestJObject(SearchUrl,null);//解析搜索结果
             JArray SongList = (JArray)SearchResult["musics"];//搜索结果曲目列表
 
             if (SongList.Count < 1)
@@ -281,7 +255,7 @@ namespace MusicBeePlugin
                 + HttpUtility.UrlEncode(Album, System.Text.UnicodeEncoding.GetEncoding("UTF-8"))
                 + "&apiKey=054022eaeae0b00e0fc068c0c0a2102a";
 
-                SearchResult = requestJObject(SearchUrl);//解析搜索结果
+                SearchResult = requestJObject(SearchUrl,null);//解析搜索结果
                 SongList = (JArray)SearchResult["musics"];//搜索结果曲目列表
             }
 
@@ -386,7 +360,7 @@ namespace MusicBeePlugin
                             cookieValue = "";
                         }
 
-                        myCookieContainer.Add(domain_uri,new Cookie(cookieKey, cookieValue));
+                        myCookieContainer.Add(domain_uri, new Cookie(cookieKey, cookieValue));
 
                     }
 
@@ -400,18 +374,18 @@ namespace MusicBeePlugin
         {
 
             string configPath = Path.Combine(mbApiInterface.Setting_GetPersistentStoragePath(), about.Name);
-          //  if (File.Exists(configPath))
+            //  if (File.Exists(configPath))
             {
                 try
                 {
                     var cookies = myCookieContainer.GetCookies(new Uri(site));
                     string tmp = "";
-                    foreach(Cookie cookie in cookies)
+                    foreach (Cookie cookie in cookies)
                     {
-                        tmp = tmp + cookie.ToString()+";";
+                        tmp = tmp + cookie.ToString() + ";";
                     }
                     File.WriteAllText(configPath, tmp);
-                    Console.WriteLine("saveCookie path="+configPath+"; site="+site);
+                    Console.WriteLine("saveCookie path=" + configPath + "; site=" + site);
 
                 }
                 catch (Exception ex)
@@ -423,7 +397,7 @@ namespace MusicBeePlugin
 
 
         // 访问url并解析为JsonObject
-        static private JObject requestJObject(string url)
+        static private JObject requestJObject(string url, string refer)
         {
             try
             {
@@ -432,7 +406,9 @@ namespace MusicBeePlugin
                     var request = (HttpWebRequest)WebRequest.Create(url);
 
                     request.CookieContainer = myCookieContainer;
-                    request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36 Edg/89.0.774.54";
+                    //                    request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36 Edg/89.0.774.54";
+                    if (!String.IsNullOrEmpty(refer))
+                        request.Referer = refer;
                     request.Timeout = 8000;
                     request.ReadWriteTimeout = 8000;
 
@@ -457,199 +433,15 @@ namespace MusicBeePlugin
         }
 
 
-
-
-    private static List<VGMdbAlbum> list_vgmdb = new List<VGMdbAlbum>();
-
-    private static void loadVGMdbAlbum(object url)
-    {
-        VGMdbAlbum vGMdbAlbum = new VGMdbAlbum(url.ToString());
-        lock (list_vgmdb)
-        {
-            list_vgmdb.Add(vGMdbAlbum);
-            if (list_vgmdb.Count == count_load_album)
-                event_load_album.Set();
-            else
-                Console.WriteLine("load " + list_vgmdb.Count + "/" + count_load_album);
-        }
-    }
-
-    static int count_load_album = 0;
-    static ManualResetEvent event_load_album = new ManualResetEvent(false);
-
-    private string getVGMdbCover(String Artist, String Album)
-    {
-        if (Album.Replace(" ", "").Length < 1)
-            return null;
-        // 从API取回搜索结构
-
-        List<string> album_urls;
-
-        if (!String.IsNullOrEmpty(Artist))
-        {
-            album_urls = vgmdb_advancedsearch(Artist, Album);
-        }
-        else
-        {
-            album_urls = new List<string>();
-        }
-
-        if (album_urls.Count < 1)
-        {
-            string SearchUrl = String.Format("http://vgmdb.info/search/albums?q={0}", Album).Replace("&", "%26") + "&format=json";
-
-            JObject SearchResult = requestJObject(SearchUrl);//解析搜索结果
-            JArray SongList = (JArray)SearchResult["results"]["albums"];//搜索结果专辑列表
-
-            if (SongList == null)
-                return null;
-
-            if (SongList.Count < 1)
-                return null;
-
-            count_load_album = Math.Min(10, SongList.Count);
-
-            for (int i = 0; i < SongList.Count; i++)
-            {
-                album_urls.Add("http://vgmdb.info/" + SongList[i]["link"].ToString() + "?format=json");
-            }
-        }
-
-        List<int> list_match_album = new List<int>();
-        List<int> list_match_artist = new List<int>();
-        List<int> list_match_title = new List<int>();
-        List<string> list_image = new List<string>();
-
-        list_vgmdb = new List<VGMdbAlbum>();
-        event_load_album.Reset();
-
-        // 至多检查10个搜索结果
-        count_load_album = Math.Min(10, album_urls.Count);
-
-        for (int i = 0; i < count_load_album; i++)
-        {
-            ThreadPool.QueueUserWorkItem(new WaitCallback(loadVGMdbAlbum), album_urls[i]);
-        }
-
-        event_load_album.WaitOne(Timeout.Infinite, true);
-        int j = 0;
-        string _Album = prepareString(Album);
-
-        for (int i = 0; i < count_load_album; i++)
-        {
-            //取出album cover
-            String s = list_vgmdb[i].cover;
-            if (s.Length < 10)
-                continue;
-
-            list_image.Add(s);
-
-            // 专辑名称命名为title
-            String album = prepareString(list_vgmdb[i].getName());
-            if (album.Contains(_Album))
-                list_match_album.Add(j);
-
-            if (Artist.Length > 0)
-            {
-                // 输入的Artist参数已经预处理过，只包含一个艺术家
-                if (list_vgmdb[i].artist.ToLower().Contains(Artist.ToLower()))
-                    list_match_artist.Add(j);
-            }
-
-            j++;
-        }
-
-        return selectCover(list_match_album, list_match_artist, list_match_title, list_image);
-
-    }
-
-    // 使用vgmdb.info的API，获取专辑页面内的信息
-    class VGMdbAlbum
-    {
-        public string cover = "";
-        private int type;
-        public string artist = "";
-
-        private string name = "";
-        public string getName() { return name; }
-        private JObject SearchResult;
-
-        public VGMdbAlbum(string url)
-        {
-            SearchResult = requestJObject(url);//解析专辑
-
-            type = 0;
-            if (SearchResult != null)
-            {
-                cover = SearchResult["picture_full"].ToString();
-                type = 1;
-                if (String.IsNullOrEmpty(cover))
-                {
-                    cover = SearchResult["picture_small"].ToString();
-                    type = 2;
-                    if (String.IsNullOrEmpty(cover))
-                    {
-                        cover = "";
-                        type = 10;
-                    }
-                }
-            }
-
-            artist = SearchResult["performers"].ToString();
-            if (String.IsNullOrEmpty(artist))
-                artist = "";
-
-            name = "" + SearchResult["name"].ToString() + "\n" + SearchResult["names"].ToString();
-
-        }
-    }
-
-    // 使用vgmdb.net的高级搜索功能，同时检索专辑和艺术家两种信息，并取回专辑的url列表
-    static private List<string> vgmdb_advancedsearch(string artist, string album)
-    {
-        List<string> album_urls = new List<string>();
-        try
-        {
-            {
-                var request = (HttpWebRequest)WebRequest.Create("https://vgmdb.net/search?do=results");
-                request.Method = "POST";
-                request.ContentType = "application/x-www-form-urlencoded";
-                string data = "action=advancedsearch&platformmodifier=contain_and&collectionmodifier=0&tracklistmodifier=is&sortby=albumtitle&orderby=ASC&dosearch=Search Albums Now"
-                    + "&albumtitles=" + album + "&artistalias=" + artist;
-                //        request.ContentLength = data.Length;
-
-                StreamWriter writer = new StreamWriter(request.GetRequestStream());
-                writer.Write(data);
-                writer.Flush();
-                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-                StreamReader reader = new StreamReader(response.GetResponseStream());
-                string retString = reader.ReadToEnd();
-
-                string pattern = @"https://vgmdb.net/album/\d+";
-                //    href =\"https://vgmdb.net/album/67360\"
-
-                foreach (Match match in Regex.Matches(retString, pattern))
-                    album_urls.Add(match.Value.Replace("https://vgmdb.net/album/", "http://vgmdb.info/album/") + "?format=json");
-            }
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-        }
-        return album_urls;
-    }
-
-
-
-    /// <summary>
-    /// 从取回的封面列表中匹配最合适的封面
-    /// </summary>
-    /// <param name="list_match_album">匹配到的专辑名列表</param>
-    /// <param name="list_match_artist">匹配到的艺术家列表</param>
-    /// <param name="list_match_title">匹配到的Title列表</param>
-    /// <param name="list_image">封面列表</param>
-    /// <returns></returns>
-    private string selectCover(List<int> list_match_album, List<int> list_match_artist, List<int> list_match_title, List<string> list_image)
+        /// <summary>
+        /// 从取回的封面列表中匹配最合适的封面
+        /// </summary>
+        /// <param name="list_match_album">匹配到的专辑名列表</param>
+        /// <param name="list_match_artist">匹配到的艺术家列表</param>
+        /// <param name="list_match_title">匹配到的Title列表</param>
+        /// <param name="list_image">封面列表</param>
+        /// <returns></returns>
+        private string selectCover(List<int> list_match_album, List<int> list_match_artist, List<int> list_match_title, List<string> list_image)
         {
             string url = "";
 
