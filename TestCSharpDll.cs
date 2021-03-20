@@ -312,42 +312,6 @@ namespace MusicBeePlugin
 
         }
 
-        private static List<VGMdbAlbum> list_vgmdb = new List<VGMdbAlbum>();
-
-        private static void loadVGMdbAlbum(object url)
-        {
-            VGMdbAlbum vGMdbAlbum = new VGMdbAlbum(url.ToString());
-            lock (list_vgmdb)
-            {
-                list_vgmdb.Add(vGMdbAlbum);
-                if (list_vgmdb.Count == count_load_album)
-                    event_load_album.Set();
-                else
-                    Console.WriteLine("load " + list_vgmdb.Count + "/" + count_load_album);
-            }
-        }
-
-        static int count_load_album = 0;
-        static ManualResetEvent event_load_album = new ManualResetEvent(false);
-
-        private string getVGMdbCover(String Artist, String Album)
-        {
-            if (Album.Replace(" ", "").Length < 1)
-                return null;
-            // 从API取回搜索结构
-
-            List<string> album_urls;
-
-            if (!String.IsNullOrEmpty(Artist))
-            {
-                album_urls =  vgmdb_advancedsearch(Artist, Album);
-            }
-            else
-            {
-                album_urls = new List<string>();
-            }
-        }
-
 
         private void loadCookie(string default_cookie, string domain)
         {
@@ -475,7 +439,6 @@ namespace MusicBeePlugin
 
 
 
-    }
 
     private static List<VGMdbAlbum> list_vgmdb = new List<VGMdbAlbum>();
 
