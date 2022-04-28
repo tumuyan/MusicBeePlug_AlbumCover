@@ -84,8 +84,16 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Api\163.cs" />
+    <Compile Include="Api\DoubanApi.cs" />
+    <Compile Include="SearchData.cs" />
+    <Compile Include="WebApi.cs" />
+    <Compile Include="Api\douban.cs" />
+    <Compile Include="Api\qq.cs" />
+    <Compile Include="Api\vgmdb.cs" />
+    <Compile Include="CookieHelper.cs" />
     <Compile Include="MusicBeeInterface.cs" />
-    <Compile Include="TestCSharpDll.cs" />
+    <Compile Include="Main.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
