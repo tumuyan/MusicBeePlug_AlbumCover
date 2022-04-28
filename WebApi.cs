@@ -12,8 +12,12 @@ namespace MusicBeePlugin
     class WebApi
     {
 
-
-        // 专辑名需要预处理，降低由于标点符号差异造成的影响
+        /// <summary>
+        /// 对专辑名预处理，降低由于标点符号差异造成的影响
+        /// </summary>
+        /// <param name="s">待处理的字符串</param>
+        /// <param name="replace_to_space">是否用空格替换</param>
+        /// <returns></returns>
         static public string prepareString(string s, bool replace_to_space)
         {
             Regex rgx = new Regex("[\\s\\]\\[\\(\\)`~!@#$%^&\\*()+=|{}':;',\\.<>/\\?~～〜（）「」［］！@#￥%……&*——+|{}【】‘；：”“’。，、？]+");

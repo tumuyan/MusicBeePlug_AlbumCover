@@ -7,7 +7,7 @@ using System.Web;
 
 namespace MusicBeePlugin.Api
 {
-    class _163
+    class _163:WebApi
     {
         private static string ApiName = "163";
 
@@ -41,11 +41,11 @@ namespace MusicBeePlugin.Api
             List<int> list_match_title = new List<int>();
             List<string> list_image = new List<string>();
 
-            string album = WebApi.prepareString(Album, false);
+            string album = prepareString(Album, false);
             foreach (string SearchUrl in SearchUrls)
             {
 
-                JObject SearchResult = WebApi.requestJObject(SearchUrl, null); //搜索结果曲目列表
+                JObject SearchResult = requestJObject(SearchUrl, null); //搜索结果曲目列表
 
                 if (null != SearchResult["result"])
                 {
@@ -64,7 +64,7 @@ namespace MusicBeePlugin.Api
                         list_image.Add(s);
                         list_image.Add(s.Replace("180x180", "800x800"));
                         // result.albums.[1].name
-                        String title = WebApi.prepareString((SongList[i]["name"] ?? "").ToString(), false);
+                        String title = prepareString((SongList[i]["name"] ?? "").ToString(), false);
                         if (title.Contains(album.Replace(" ", "")) || album.Replace(" ", "").Contains(title))
                             list_match_album.Add(i);
                         list_match_album.Add(i);
@@ -91,7 +91,7 @@ namespace MusicBeePlugin.Api
             Console.WriteLine(ApiName + " selsct from " + list_image.Count + " image");
 
 
-            return WebApi.selectCover(list_match_album, list_match_artist, list_match_title, list_image);
+            return selectCover(list_match_album, list_match_artist, list_match_title, list_image);
         }
     }
 }

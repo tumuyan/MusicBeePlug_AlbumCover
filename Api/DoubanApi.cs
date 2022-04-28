@@ -11,13 +11,14 @@ namespace MusicBeePlugin.Api
     class DoubanApi:WebApi
     {
 
+       string base_url = "https://api.douban.com/v2/music/search?apiKey=054022eaeae0b00e0fc068c0c0a2102a&q=";
+       
         public string getCover(String Artist, String Album)
         {
             if (Album.Replace(" ", "").Length < 1)
                 return null;
             // 从API取回数据
 
-            string base_url = "https://api.douban.com/v2/music/search?apiKey=054022eaeae0b00e0fc068c0c0a2102a&q=";
 
             List<string> list_url = new List<string>();
 
@@ -26,8 +27,8 @@ namespace MusicBeePlugin.Api
 
             list_url.Add(base_url + HttpUtility.UrlEncode(Album, System.Text.UnicodeEncoding.GetEncoding("UTF-8")));
 
-            if (WebApi.matchMultWords(Album))
-                list_url.Add(base_url + HttpUtility.UrlEncode(WebApi.prepareString(Album, true), System.Text.UnicodeEncoding.GetEncoding("UTF-8")));
+            if (matchMultWords(Album))
+                list_url.Add(base_url + HttpUtility.UrlEncode(prepareString(Album, true), System.Text.UnicodeEncoding.GetEncoding("UTF-8")));
 
             if (list_url.Count < 1)
                 return null;
@@ -37,7 +38,7 @@ namespace MusicBeePlugin.Api
             foreach (string SearchUrl in list_url)
             {
                 Console.WriteLine("SearchUrl = \t" + SearchUrl);
-                JObject SearchResult = WebApi.requestJObject(SearchUrl, null);//解析搜索结果
+                JObject SearchResult = requestJObject(SearchUrl, null);//解析搜索结果
                 JArray SongList = (JArray)SearchResult["musics"];//搜索结果曲目列表
 
                 if (null == SongList)

@@ -153,7 +153,8 @@ namespace MusicBeePlugin
             Console.WriteLine("RetrieveArtwork Provider = " + provider + ", Artist = " + Artist + ", album = " + album);
             //  return new _163().getCover(Artist, album);
             //  return new vgmdb().getCover(Artist, album);
-              return new DoubanApi().getCover(Artist, album);
+            return new qq().getCover(Artist, album);
+            //  return new DoubanApi().getCover(Artist, album);
         }
     }
 
