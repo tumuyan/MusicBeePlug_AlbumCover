@@ -60,7 +60,7 @@ namespace MusicBeePlugin.Api
                         String s = SongList[i]["picUrl"].ToString();
                         if (s.Replace(" ", "").Length < 10)
                             continue;
-                        continue;
+
                         list_image.Add(s);
                         list_image.Add(s.Replace("180x180", "800x800"));
                         // result.albums.[1].name
