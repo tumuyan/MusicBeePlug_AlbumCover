@@ -13,8 +13,7 @@ namespace MusicBeePlugin.Api
 {
     class qq:WebApi
     {
-        string base_url = "https://c.y.qq.com/soso/fcgi-bin/client_search_cp?ct=24&qqmusic_ver=1298&remoteplace=txt.yqq.album&aggr=0&lossless=0&sem=10&t=8&p=1&n=20&format=json&inCharset=utf8&outCharset=utf-8&platform=yqq.json&w=";
-
+        string base_url = "https://c.y.qq.com/soso/fcgi-bin/search_for_qq_cp?g_tk=5381&uin=0&format=jsonp&inCharset=utf-8&outCharset=utf-8&notice=0&platform=h5&needNewCode=1&t=8&ie=utf-8&sem=1&aggr=0&perpage=20&n=20&p=1&w=";
         public string getCover(String Artist, String Album)
         {
             if (Album.Replace(" ", "").Length < 1)
@@ -46,8 +45,10 @@ namespace MusicBeePlugin.Api
 
             foreach (string SearchUrl in SearchUrls)
             {
+                Regex regex = new Regex("^callback\\((.*)\\)$");
+                String SearchResultStr = regex.Replace(requestString(SearchUrl, "https://c.y.qq.com/"), "$1");                    ;
 
-                JObject SearchResult = requestJObject(SearchUrl, "https://y.qq.com/");
+                JObject SearchResult = JObject.Parse(SearchResultStr);
 
                 if (null != SearchResult["data"]["album"]["list"])
                 {
@@ -55,31 +56,29 @@ namespace MusicBeePlugin.Api
 
                     for (int i = 0; i < SongList.Count; i++)
                     {
-                        //data.album.list[4].albumPic
-                        //http://y.gtimg.cn/music/photo_new/T002R180x180M000001ddOOX26S67A_1.jpg
+                        // https://y.qq.com/music/photo_new/T002R800x800M000001cQG9d29dpgv_1.jpg?max_age=2592000
+                        // https://y.qq.com/music/photo_new/T002R800x800M000001cQG9d29dpgv.jpg
 
-                        String s = SongList[i]["albumPic"].ToString();
+                        String s = SongList[i]["albumMID"].ToString();
                         if (s.Replace(" ", "").Length < 10)
                             continue;
 
-                        list_image.Add(s.Replace("180x180", "800x800"));
+                        list_image.Add("https://y.qq.com/music/photo_new/T002R800x800M000"+s+".jpg");
 
-                        // data.album.list[1].albumName
                         String title = prepareString((SongList[i]["albumName"] ?? "").ToString(),false);
                         if (title.Contains(album) || album.Contains(title))
                             list_match_album.Add(i);
 
+                        /* 已经无了
                         //data.album.list[1].catch_song (虽然有这个节点，但是大量专辑没有内容）
                         if ((SongList[i]["catch_song"] ?? "").ToString().ToLower().Contains(album))
-                            list_match_title.Add(i);
+                            list_match_title.Add(i);*/
 
-                        //data.album.list[4].singer_list[1]  data.album.list[1].singerName
+
                         if (Artist.Length > 0)
                         {
-                            // 如果有多个艺术家（虽然这不规范），只匹配第一个。而检索结果对应了专辑艺术家、参与艺术家，QQ音乐没有提供发行方信息
-                            if ((SongList[i]["singer_list"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
-                                || (SongList[i]["singer_list"] ?? "").ToString().ToLower().Contains(Artist.ToLower())
-                                )
+                            // 如果有多个艺术家（虽然这不规范），只匹配第一个。
+                            if ((SongList[i]["singerName"] ?? "").ToString().ToLower().Contains(Artist.ToLower()))
                                 list_match_artist.Add(i);
                         }
                     }

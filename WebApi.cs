@@ -84,6 +84,50 @@ namespace MusicBeePlugin
 
 
 
+        /// <summary>
+        /// 请求url内容并解析为JsonObject
+        /// </summary>
+        /// <param name="url">url</param>
+        /// <param name="refer">refer</param>
+        /// <returns></returns>
+        static public String requestString(string url, string refer)
+        {
+            try
+            {
+                if (!String.IsNullOrEmpty(url))
+                {
+                    Console.WriteLine("request: " + url);
+                    var request = (HttpWebRequest)WebRequest.Create(url);
+
+                    request.CookieContainer = CookieHelper.get().GetCookieCollection();
+                    //                    request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36 Edg/89.0.774.54";
+                    if (!String.IsNullOrEmpty(refer))
+                        request.Referer = refer;
+                    request.Timeout = 10000;
+                    request.ReadWriteTimeout = 10000;
+
+                    var response = (HttpWebResponse)request.GetResponse();
+                    var SearchString = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                    CookieHelper.get().addCookie(response.Cookies);
+
+                    if (!String.IsNullOrEmpty(SearchString))
+                    {
+                        Console.WriteLine("request result str: " + SearchString.Substring(0, Math.Min(100, SearchString.Length - 1)));
+
+                        return SearchString;
+                    }
+
+                }
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("requestJObject:" + url);
+                Console.WriteLine(e);
+            }
+            return "";
+
+        }
+
 
         /// <summary>
         /// 从取回的封面列表中匹配最合适的封面
