@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30523.141
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32421.90
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CSharpDll", "CSharpDll.csproj", "{F5D46BA1-6F21-40EF-9695-46105CCACD08}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MB_AlbumCover", "MB_AlbumCover.csproj", "{F5D46BA1-6F21-40EF-9695-46105CCACD08}"
 EndProject
 Project("{911E67C6-3D85-4FCE-B560-20A9C3E3FF48}") = "MusicBee", "..\..\Media\MusicBee\MusicBee.exe", "{54BA5CFB-5A64-45EB-9388-1E1C8992FC8A}"
 	ProjectSection(DebuggerProjectSystem) = preProject
@@ -16,6 +16,7 @@ Project("{911E67C6-3D85-4FCE-B560-20A9C3E3FF48}") = "MusicBee", "..\..\Media\Mus
 		UseLegacyDebugEngines = No
 		LaunchSQLEngine = No
 		AttachLaunchAction = No
+		IORedirection = Auto
 	EndProjectSection
 EndProject
 Global
