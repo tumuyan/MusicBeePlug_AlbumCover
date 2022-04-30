@@ -43,8 +43,8 @@ namespace MusicBeePlugin
             about.TargetApplication = "";   //  the name of a Plugin Storage device or panel header for a dockable panel
             about.Type = PluginType.ArtworkRetrieval;
             about.VersionMajor = 1;  // your plugin version
-            about.VersionMinor = 0;
-            about.Revision = 3;
+            about.VersionMinor = 1;
+            about.Revision = 0;
             about.MinInterfaceVersion = MinInterfaceVersion;
             about.MinApiRevision = MinApiRevision;
             about.ReceiveNotifications = (ReceiveNotificationFlags.PlayerEvents | ReceiveNotificationFlags.TagEvents);
