@@ -1,20 +1,20 @@
 
 #### Readme
 A Artwork Provider Plug-in for [MusicBee](https://getmusicbee.com/). Each branch is a different provider.  
-now it could search album cover from ~~music.douban.com~~, y.qq.com, music.163.com, vgmdb.info.   
+now it could search album cover from ~~music.douban.com~~, y.qq.com, music.163.com, ~~vgmdb.info~~vgmdb.net .   
 Also it is a template for a artwork provider plugin for MusicBee.
 
 #### How to use
 unzip the release files to the MusicBee\Plugins folder, then the preferences-tags(2)-artwork will shows new provider.
 
-#### ËµÃ÷
-ÕâÊÇÒ»¸öÔÚÏßËÑË÷×¨¼­·âÃæµÄ[MusicBee](https://getmusicbee.com/)²å¼ş¡£Ä¿Ç°°üº¬ÁË~~¶¹°êÒôÀÖ~~£¬ QQÒôÀÖ£¬ÍøÒ×ÔÆÒôÀÖ£¬Vgmdb 3¸ö²»Í¬µÄ·ÖÖ§£¨²å¼ş£©¡£  
+#### è¯´æ˜
+è¿™æ˜¯ä¸€ä¸ªåœ¨çº¿æœç´¢ä¸“è¾‘å°é¢çš„[MusicBee](https://getmusicbee.com/)æ’ä»¶ã€‚ç›®å‰åŒ…å«äº†~~è±†ç“£éŸ³ä¹~~ï¼Œ QQéŸ³ä¹ï¼Œç½‘æ˜“äº‘éŸ³ä¹ï¼ŒVGMDB 3ä¸ªä¸åŒçš„åˆ†æ”¯ï¼ˆæ’ä»¶ï¼‰ã€‚  
 
-Ä¿Ç°È«²¿´úÂë¶¼ÔÚÄ¬ÈÏ·ÖÖ§ÖĞ£¬Ä¬ÈÏ·ÖÖ§µÄ±àÒë½á¹ûÎªQQÒôÀÖ£¬ÇĞ»»ÆäËû·ÖÖ§¿ÉÒÔ±àÒëÆäËûµÄÍøÕ¾À´Ô´µÄ²å¼ş¡£
+ç›®å‰å…¨éƒ¨åŠŸèƒ½éƒ½å·²ç»åˆå¹¶åˆ°é»˜è®¤åˆ†æ”¯ä¸­ï¼Œä½†æ˜¯é»˜è®¤åˆ†æ”¯çš„ç¼–è¯‘ç»“æœä¸ºQQéŸ³ä¹ï¼Œåˆ‡æ¢å…¶ä»–åˆ†æ”¯å¯ä»¥ç¼–è¯‘å…¶ä»–çš„ç½‘ç«™æ¥æºçš„æ’ä»¶ã€‚
 
-µ±È»£¬Õâ¸ö²Ö¿âÒ²¿ÉÒÔ¿´×÷ÊÇMusicBee²å¼ş¿ª·¢µÄÊ¾Àı¡£
+å½“ç„¶ï¼Œè¿™ä¸ªä»“åº“ä¹Ÿå¯ä»¥çœ‹ä½œæ˜¯MusicBeeæ’ä»¶å¼€å‘çš„ç¤ºä¾‹ã€‚
 
-#### Ê¹ÓÃ
-½âÑ¹ÎÄ¼şµ½MusicBee°²×°Â·¾¶µÄPluginsÎÄ¼ş¼Ğ£¬ ÖØĞÂ´ò¿ªMusicBeeÊ±£¬ÔÚ±à¼­-Ê×Ñ¡Ïî-±êÇ©(2)-·âÃæ¿ÉÒÔ¿´µ½ĞÂµÄ²å¼ş£¬¹´Ñ¡²¢±£´æ¼´¿É¡£
+#### ä½¿ç”¨
+è§£å‹æ–‡ä»¶åˆ°MusicBeeå®‰è£…è·¯å¾„çš„Pluginsæ–‡ä»¶å¤¹ï¼Œ é‡æ–°æ‰“å¼€MusicBeeæ—¶ï¼Œåœ¨ç¼–è¾‘-é¦–é€‰é¡¹-æ ‡ç­¾(2)-å°é¢å¯ä»¥çœ‹åˆ°æ–°çš„æ’ä»¶ï¼Œå‹¾é€‰å¹¶ä¿å­˜å³å¯ã€‚
 ![img](screenshot1.png)
 
