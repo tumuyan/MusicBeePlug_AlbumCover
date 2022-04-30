@@ -25,7 +25,7 @@ namespace MusicBeePlugin
 #else
         string mode = "";
 # endif
-        private String name = "QQ";
+        private String name = "163";
         private MusicBeeApiInterface mbApiInterface;
         private PluginInfo about = new PluginInfo();
         private static CookieContainer myCookieContainer = new CookieContainer();
@@ -38,7 +38,7 @@ namespace MusicBeePlugin
             about.PluginInfoVersion = PluginInfoVersion;
             about.Name = name + " Music Artwork" + mode;
             about.Description = "Get album cover from " + name + " music.  " +
-                "\n从QQ音乐获取专辑封面";
+                "\n从网易云音乐获取专辑封面";
             about.Author = "Tumuyan";
             about.TargetApplication = "";   //  the name of a Plugin Storage device or panel header for a dockable panel
             about.Type = PluginType.ArtworkRetrieval;
@@ -151,9 +151,9 @@ namespace MusicBeePlugin
             }
             // 专辑名称同样需要预处理
             Console.WriteLine("RetrieveArtwork Provider = " + provider + ", Artist = " + Artist + ", album = " + album);
-            //  return new _163().getCover(Artist, album);
+            return new _163().getCover(Artist, album);
             //  return new vgmdb().getCover(Artist, album);
-            return new qq().getCover(Artist, album);
+          //    return new qq().getCover(Artist, album);
             //  return new DoubanApi().getCover(Artist, album);
         }
     }
