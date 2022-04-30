@@ -25,7 +25,7 @@ namespace MusicBeePlugin
 #else
         string mode = "";
 # endif
-        private String name = "Douban";
+        private String name = "QQ";
         private MusicBeeApiInterface mbApiInterface;
         private PluginInfo about = new PluginInfo();
         private static CookieContainer myCookieContainer = new CookieContainer();
@@ -38,7 +38,7 @@ namespace MusicBeePlugin
             about.PluginInfoVersion = PluginInfoVersion;
             about.Name = name + " Music Artwork" + mode;
             about.Description = "Get album cover from " + name + " music.  " +
-                "\n从豆瓣音乐获取专辑封面，使用了豆瓣音乐Api V2";
+                "\n从QQ音乐获取专辑封面";
             about.Author = "Tumuyan";
             about.TargetApplication = "";   //  the name of a Plugin Storage device or panel header for a dockable panel
             about.Type = PluginType.ArtworkRetrieval;
