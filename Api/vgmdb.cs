@@ -30,7 +30,7 @@ namespace MusicBeePlugin.Api
                 SearchResult = requestJObject(url, null);//解析专辑
 
                 type = 0;
-                if (SearchResult != null)
+                if (SearchResult != null && SearchResult.ContainsKey("results"))
                 {
                     cover = SearchResult["picture_full"].ToString();
                     type = 1;
@@ -143,6 +143,18 @@ namespace MusicBeePlugin.Api
                 string SearchUrl = String.Format("http://vgmdb.info/search/albums?q={0}", Album).Replace("&", "%26") + "&format=json";
 
                 JObject SearchResult = requestJObject(SearchUrl, null);//解析搜索结果
+                if (SearchResult == null)
+                {
+                    Console.WriteLine("[Error]vgmdb SearchResult == null, SearchUrl = " + SearchUrl);
+                    return null;
+                }
+                if(!SearchResult.ContainsKey("results"))
+                {
+                    Console.WriteLine("[Error]vgmdb SearchResult not has results, SearchUrl = " + SearchUrl);
+                    return null;
+                }
+
+
                 JArray SongList = (JArray)SearchResult["results"]["albums"];//搜索结果专辑列表
 
                 if (SongList == null)
