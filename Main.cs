@@ -1,4 +1,4 @@
-﻿#define CONFIG_API_SERVER
+﻿//#define CONFIG_API_SERVER
 using System;
 using System.Runtime.InteropServices;
 using System.Drawing;
